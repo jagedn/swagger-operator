@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger
+  labels:
+    app: swagger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: swagger
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: swagger
+    spec:
+      containers:
+        - name: swagger
+          image: swaggerapi/swagger-ui
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          resources:
+            limits:
+              memory: 256M
+            requests:
+              cpu: "200m"
+              memory: 256M
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html/swagger-initializer.js
+              name: swagger-config
+              subPath: swagger-initializer.js
+            - mountPath: /docker-entrypoint.d/40-swagger-ui.sh
+              name: swagger-config
+              subPath: 40-swagger-ui.sh
+      volumes:
+        - name: swagger-config
+          configMap:
+            name: swagger-config
+            items:
+              - key: 40-swagger-ui.sh
+                path: 40-swagger-ui.sh
+              - key: swagger-initializer.js
+                path: swagger-initializer.js
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swagger-config
+data:
+  40-swagger-ui.sh: |
+    #! /bin/sh
+    set -e
+    echo do nothing
+  swagger-initializer.js: |
+    window.onload = function() {
+        window.ui = SwaggerUIBundle({
+            urls: [
+                {
+                    name:"Service 1",
+                    url:"/service1/swagger/service-example-0.0.yml"
+                }
+                ,
+                {
+                    name:"Service 2",
+                    url:"/service2/swagger/service-example-0.0.yml"
+                }
+            ],
+            "dom_id": "#swagger-ui",
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout",
+            queryConfigEnabled: false,
+            requestInterceptor: (e)=>{
+                console.log(e)
+                if( !e.loadSpec ){
+                    const service = document.getElementById("select").value;
+
+                    const split = service.split("/");
+                    const servicename = split[1];
+
+                    const current = e.url.split("/");
+                    const protocol = current.shift();
+                    const empty1 = current.shift();
+                    const domain = current.shift();
+                    
+                    e.url = `${protocol}//${domain}/${servicename}/${current.join('/')}`
+                }
+                return e;
+            }
+        })
+    };
+---

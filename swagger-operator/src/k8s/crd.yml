@@ -1,0 +1,48 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: swaggers.puravida.com
+spec:
+  group: puravida.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                serviceSelector:
+                  type: string
+                configMap:
+                  type: string
+                deployment:
+                  type: string
+              required:
+                - serviceSelector
+                - configMap
+                - deployment
+      additionalPrinterColumns:
+        - name: ServiceSelector
+          type: string
+          description: The selector of services to inspect
+          jsonPath: .spec.serviceSelector
+        - name: ConfigMap
+          type: string
+          description: The name of the configmap to update
+          jsonPath: .spec.configmap
+        - name: Deployment
+          type: string
+          description: The name of the deployment to restart
+          jsonPath: .spec.deployment
+  scope: Namespaced
+  names:
+    plural: swaggers
+    singular: swagger
+    kind: Swagger
+    shortNames:
+      - sw
